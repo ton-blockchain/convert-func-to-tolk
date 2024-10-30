@@ -1,0 +1,13 @@
+_ one(tuple dummy) {
+  return 1;
+}
+
+_ main(int a, int x) {
+  int y = 0;
+  int z = 0;
+  while ((y = x * x) > a) {
+    x -= 1;
+    z = one(nil);
+  }
+  return (y, z);
+}
