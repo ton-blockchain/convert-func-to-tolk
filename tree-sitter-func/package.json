@@ -1,0 +1,20 @@
+{
+  "name": "tree-sitter-func",
+  "version": "0.4.5",
+  "description": "FunC grammar for node-tree-sitter",
+  "main": "bindings/node",
+  "keywords": [
+    "parser",
+    "lexer"
+  ],
+  "author": "akifog and TON Blockchain",
+  "license": "MIT",
+  "tree-sitter": [
+    {
+      "scope": "source.fc",
+      "file-types": [
+        "fc"
+      ]
+    }
+  ]
+}
