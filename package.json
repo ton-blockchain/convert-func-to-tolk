@@ -1,7 +1,7 @@
 {
   "name": "@ton/convert-func-to-tolk",
   "version": "0.6.0",
-  "description": "Convert FunC to Tolk with a single npx command",
+  "description": "Convert FunC contracts to Tolk with a single npx command",
   "main": "dist/index.js",
   "bin": "./dist/cli.js",
   "files": [
