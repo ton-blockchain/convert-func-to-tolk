@@ -1,0 +1,31 @@
+const op::burn = 123;
+const err::invalid = 0x456;
+
+() main(cell c) {
+    get_data();
+    set_data(c3);
+    now();
+
+    var t = empty_tuple();
+    t~tpush(10);
+
+    compute_data_size(c, 10);
+    c.compute_data_size(10);
+    compute_data_size?(c, 10);
+    c.compute_data_size?(10);
+
+    if (equal_slice_bits(sender, owner)) {
+        var c = begin_cell().end_cell();
+        c.cell_hash();
+        cell_hash(c);
+        slice_empty?(c.begin_parse());
+        slice_refs(s);
+    }
+    throw_unless(401, equal_slices(sender_address, owner_address));
+
+    builder_depth();    ;; incorrect
+    builder_depth(b);
+
+    random();
+    randomize_lt();
+}
