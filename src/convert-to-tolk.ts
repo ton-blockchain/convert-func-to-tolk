@@ -48,7 +48,16 @@ function replaceIdentifier(name: string, out: FunCToTolkState, isFunctionCall: b
   if (name.endsWith('?')) {
     name = (name.startsWith('is_') ? '' : 'is_') + name.substring(0, name.length - 1)
   }
-  if (!/^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(name)) {
+  if (name.startsWith("op::")) {
+    name = "OP_" + name.substring(4).toUpperCase();
+  }
+  if (name.startsWith("err::")) {
+    name = "ERR_" + name.substring(5).toUpperCase();
+  }
+  if (name.startsWith("error::")) {
+    name = "ERROR_" + name.substring(7).toUpperCase();
+  }
+  if (!/^[a-zA-Z_$][a-zA-Z_$0-9.]*$/.test(name)) {
     name = '`' + name + '`'
   }
 
@@ -223,7 +232,7 @@ class FunCToTolkState {
     out += this.tolkSource.substring(0, posFirstDirective)
 
     if (this.needInsertTolkPreamble) {
-      out += 'tolk 0.6\n\n'
+      out += 'tolk 0.12\n\n'
     }
     for (let filename of this.importStdlib) {
       out += `import "${filename}"\n`
@@ -398,7 +407,7 @@ function convertType(typeNodes: SyntaxNode[], out: FunCToTolkState) {
       else
         out.addTextUnchanged(n)
     } else if (n.type === 'hole_type' || n.type === 'var_type') {
-      out.addTextModified(n, 'auto')
+      out.addTextModified(n, 'todo')    // to fire compilation error in Tolk, absence of type
     } else if (n.childCount) {
       convertType(n.children, out)
     } else {
@@ -464,7 +473,13 @@ function convertFunctionParameter(n: SyntaxNode, out: FunCToTolkState, forceName
     let s_type = out.createEmptyFork(n)
     s_type.addTextCustom(s_name + ": ")
     convertType(n_type, s_type)
-    out.mergeWithFork(s_type)
+    if (forceName !== 'self') {
+      out.mergeWithFork(s_type)
+    } else {
+      n_type.forEach(d => out.justSkipNode(d))
+      out.justSkipNode(n_name!)
+      out.addTextCustom('self')
+    }
   } else {  // "param_name" or "param_type" (unnamed)
     let nt = n.text
     let is_type = nt === 'int' || nt === 'slice' || nt === 'builder' || nt === 'tuple'
@@ -475,7 +490,7 @@ function convertFunctionParameter(n: SyntaxNode, out: FunCToTolkState, forceName
       if (out.getOptions().transformLocalVarNamesToCamelCase) {
         nt = transformSnakeCaseToCamelCase(nt)
       }
-      out.addTextModified(n, nt + ": auto")
+      out.addTextModified(n, nt + ": todo")   // there is no `auto` in Tolk, add compilation error
     }
   }
 }
@@ -502,6 +517,7 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
   let is_get_method = !!is_method_id_n
   let s_fun_keyword = out.createEmptyFork(n.firstChild!)
   let s_name = out.createEmptyFork(n_name!)
+  let s_receiver_name = null
   let s_genericsT = n_forall ? out.createEmptyFork(n_forall) : null
   let s_parameters = n_arguments ? out.createEmptyFork(n_arguments) : null
   let s_return_type = n_return_type.length ? out.createEmptyFork(n_return_type[0]) : null
@@ -563,6 +579,9 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
       if (child.type === 'parameter_declaration') {
         if (first_param_name === '' && is_modifying_method) {
           convertFunctionParameter(child, s_parameters!, 'self')
+          s_receiver_name = out.createEmptyFork(child.childForFieldName('type')!)
+          convertType(child.childrenForFieldName('type'), s_receiver_name)
+          s_receiver_name.addTextCustom('.')      // output will be `fun slice.method(mutate self)`
         } else {
           convertFunctionParameter(child, s_parameters!, null)
         }
@@ -574,7 +593,7 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
       } else {
         s_parameters!.addTextUnchanged(child)
         if (is_modifying_method && !is_mutate_added && child.type === '(') {
-          s_parameters!.addTextCustom('mutate ')
+          s_parameters!.addTextCustom('mutate')
           is_mutate_added = true
         }
       }
@@ -600,7 +619,7 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
   if (s_return_type && !s_return_type.isEmpty())
     s_parameters!.addTextCustom(': ')
 
-  out.mergeWithFork(s_fun_keyword, s_name, s_genericsT, s_parameters, s_return_type, s_specifiers)
+  out.mergeWithFork(s_fun_keyword, s_receiver_name, s_name, s_genericsT, s_parameters, s_return_type, s_specifiers)
 
   if (is_modifying_method) {
     out.onEnterModifyingMethod(first_param_name)
@@ -1058,11 +1077,27 @@ function convertFunctionCall(n: SyntaxNode, out: FunCToTolkState) {
       return
     }
     if (f_name === 'get_balance' && n.nextSibling?.text === '.pair_first()') {
-      out.addTextModified(n, 'getMyOriginalBalance()')
+      out.addTextModified(n, 'contract.getOriginalBalance()')
       return
     }
     if (f_name === 'pair_first' && n.text === 'pair_first(get_balance())') {
-      out.addTextModified(n, 'getMyOriginalBalance()')
+      out.addTextModified(n, 'contract.getOriginalBalance()')
+      return
+    }
+    // replace `cell_hash(c)` with `c.hash()`
+    if (f_name in RENAMING.STDLIB_NOT_FUNCTIONS_BUT_METHODS && n_arguments && n_arguments.childCount > 2) {
+      let n_children = n_arguments.childCount
+      out.justSkipNode(n_ident)
+      out.justSkipNode(n_arguments.child(0)!)   // '('
+      convertAnyInFunctionBody(n_arguments.child(1)!, out)
+      if (n_arguments.child(2)!.type === ',') {
+        out.justSkipNode(n_arguments.child(2)!)
+        out.skipSpaces()
+      }
+      out.addTextCustom(`.${RENAMING.STDLIB_RENAMING[f_name]}(`)
+      for (let i = 3; i < n_children; ++i) {
+        convertAnyInFunctionBody(n_arguments.child(i)!, out)
+      }
       return
     }
   }
@@ -1149,6 +1184,17 @@ function convertExpression(n: SyntaxNode, out: FunCToTolkState) {
   }
 }
 
+function convertStringLiteralWithPostfix(n: SyntaxNode, out: FunCToTolkState) {
+  let postfix = n.text[n.text.length - 1]
+  if (postfix in RENAMING.STRING_POSTFIXES_TO_FUNCTIONS) {
+    let f_name = RENAMING.STRING_POSTFIXES_TO_FUNCTIONS[postfix]
+    out.addTextCustom(`${f_name}(${n.text.substring(0, n.text.length - 1)})`)
+    out.justSkipNode(n)
+  } else {
+    out.addTextUnchanged(n)
+  }
+}
+
 function convertTildeCallToDotCall(n: SyntaxNode, out: FunCToTolkState) {
   let identifier_name = n.nextSibling?.text
   let key = '~' + identifier_name
@@ -1220,6 +1266,10 @@ function convertAnyInFunctionBody(n: SyntaxNode, out: FunCToTolkState) {
       break
     case 'expression':
       convertExpression(n, out)
+      break
+    case 'number_string_literal':
+    case 'slice_string_literal':
+      convertStringLiteralWithPostfix(n, out)
       break
     case '~':
       convertTildeCallToDotCall(n, out)

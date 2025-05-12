@@ -37,17 +37,17 @@ fun `op:rwallet_op`(): int
 fun `cmd:restricted_transfer`(): int
     asm "0x373aa9f4 PUSHINT";
 
-fun isWhitelisted(addr: auto, allowedDestinations: auto) {
-    var (_, _, _, found: int) = allowedDestinations.prefixDictGet(addr.getRemainingBitsCount(), addr);
+fun isWhitelisted(addr: todo, allowedDestinations: todo) {
+    var (_, _, _, found: int) = allowedDestinations.prefixDictGet(addr.remainingBitsCount(), addr);
     return found;
 }
 
-fun loadUint32(mutate self: slice): int {
+fun slice.loadUint32(mutate self): int {
     return self.loadUint(32);
 }
 
 @inline_ref
-fun checkMessageDestination(msg: auto, allowedDestinations: auto) {
+fun checkMessageDestination(msg: todo, allowedDestinations: todo) {
     var cs = msg.beginParse();
     var flags = cs.loadUint(4);
     if (flags & 8) {
@@ -60,7 +60,7 @@ fun checkMessageDestination(msg: auto, allowedDestinations: auto) {
 }
 
 fun unpackData() {
-    var cs = getContractData().beginParse();
+    var cs = contract.getData().beginParse();
     var res = (
         cs.loadUint32(),
         cs.loadUint(32),
@@ -72,7 +72,7 @@ fun unpackData() {
         cs.loadCoins(),
         cs.loadDict()
     );
-    cs.assertEndOfSlice();
+    cs.assertEnd();
     return res;
 }
 
@@ -91,10 +91,10 @@ fun packData(seqno: int, subwalletId: int, publicKey: int, configPublicKey: int,
 
 fun lockGrams(locked: cell, total: int, ts: int, value: int): (cell, int) {
     total += value;
-    var (foundCs: slice, found: auto) = locked.uDictGet(32, ts);
+    var (foundCs: slice, found: todo) = locked.uDictGet(32, ts);
     if (found) {
         var foundValue = foundCs.loadCoins();
-        foundCs.assertEndOfSlice();
+        foundCs.assertEnd();
         value += foundValue;
     }
     locked.uDictSetBuilder(32, ts, beginCell().storeCoins(value));
@@ -112,7 +112,7 @@ fun unlockGrams(locked: cell, total: int, nowTs: int): (cell, int) {
         if (f) {
             locked = `locked'`;
             var value: int = valueCs.loadCoins();
-            valueCs.assertEndOfSlice();
+            valueCs.assertEnd();
             total -= value;
         }
     } while (!(~ f));
@@ -127,7 +127,7 @@ fun onInternalMessage(msgValue: int, inMsgCell: cell, inMsg: slice) {
         return;
     }
     var sAddr = cs.loadAddress();
-    if (inMsg.isEndOfSlice()) {
+    if (inMsg.isEnd()) {
         return;
     }
     var op: int = inMsg.loadUint32();
@@ -148,7 +148,7 @@ fun onInternalMessage(msgValue: int, inMsgCell: cell, inMsg: slice) {
 
 
     var signature = inMsg.loadBits(512);
-    assert(isSignatureValid(sliceHash(inMsg), signature, configPublicKey)) throw `err:wrong_config_signature`();
+    assert(isSignatureValid(inMsg.hash(), signature, configPublicKey)) throw `err:wrong_config_signature`();
     var cmd: int = inMsg.loadUint(32);
     assert(cmd == `cmd:restricted_transfer`()) throw `err:unknown_cmd`();
     var (onlyRestrict, ts) = (inMsg.loadUint(1), inMsg.loadUint32());
@@ -158,7 +158,7 @@ fun onInternalMessage(msgValue: int, inMsgCell: cell, inMsg: slice) {
         (locked, totalLockedValue) = lockGrams(locked, totalLockedValue, ts, msgValue);
     }
 
-    setContractData(packData(storedSeqno, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
+    contract.setData(packData(storedSeqno, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
         totalRestrictedValue, restricted));
 }
 
@@ -166,20 +166,20 @@ fun onExternalMessage(inMsg: slice) {
     var signature = inMsg.loadBits(512);
     var cs = inMsg;
     var (subwalletId, validUntil, msgSeqno) = (cs.loadUint(32), cs.loadUint32(), cs.loadUint(32));
-    assert(!(validUntil <= now())) throw `err:replay_protection`();
+    assert(!(validUntil <= blockchain.now())) throw `err:replay_protection`();
     var (storedSeqno, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
         totalRestrictedValue, restricted) = unpackData();
     assert(msgSeqno == storedSeqno) throw `err:wrong_seqno`();
     assert(subwalletId == storedSubwallet) throw `err:wrong_subwallet_id`();
-    assert(isSignatureValid(sliceHash(inMsg), signature, publicKey)) throw `err:wrong_signature`();
+    assert(isSignatureValid(inMsg.hash(), signature, publicKey)) throw `err:wrong_signature`();
     acceptExternalMessage();
 
-    (restricted, totalRestrictedValue) = unlockGrams(restricted, totalRestrictedValue, now());
-    (locked, totalLockedValue) = unlockGrams(locked, totalLockedValue, now());
+    (restricted, totalRestrictedValue) = unlockGrams(restricted, totalRestrictedValue, blockchain.now());
+    (locked, totalLockedValue) = unlockGrams(locked, totalLockedValue, blockchain.now());
     var effectivelyLocked: int = totalLockedValue;
     var canUseRestricted: int = 1;
     var csCopy = cs;
-    while (csCopy.getRemainingRefsCount()) {
+    while (csCopy.remainingRefsCount()) {
         var mode = csCopy.loadUint(8);
         var msg = csCopy.loadRef();
         canUseRestricted &= checkMessageDestination(msg, allowedDestinations);
@@ -191,31 +191,31 @@ fun onExternalMessage(inMsg: slice) {
     reserveToncoinsOnBalance(effectivelyLocked, 2);
 
     cs.stackMoveToTop();
-    while (cs.getRemainingRefsCount()) {
+    while (cs.remainingRefsCount()) {
         var mode = cs.loadUint(8);
         var msg = cs.loadRef();
         sendRawMessage(msg, mode);
     }
-    cs.assertEndOfSlice();
+    cs.assertEnd();
 
-    setContractData(packData(storedSeqno + 1, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
+    contract.setData(packData(storedSeqno + 1, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
         totalRestrictedValue, restricted));
 }
 
 // Get methods
 
 get seqno(): int {
-    return getContractData().beginParse().preloadUint(32);
+    return contract.getData().beginParse().preloadUint(32);
 }
 
 get wallet_id(): int {
-    var ds = getContractData().beginParse();
+    var ds = contract.getData().beginParse();
     ds.loadUint32();
     return ds.preloadUint(32);
 }
 
 get get_public_key(): int {
-    var ds = getContractData().beginParse();
+    var ds = contract.getData().beginParse();
     ds.loadUint(32 + 32);
     return ds.preloadUint(256);
 }
@@ -227,7 +227,7 @@ get get_balances_at(time: int): (int, int, int) {
         totalRestrictedValue, restricted) = unpackData();
     (restricted, totalRestrictedValue) = unlockGrams(restricted, totalRestrictedValue, time);
     (locked, totalLockedValue) = unlockGrams(locked, totalLockedValue, time);
-    var tonBalance: int = getMyOriginalBalance();
+    var tonBalance: int = contract.getOriginalBalance();
     try { } catch { }
     return ( tonBalance,
         totalRestrictedValue,
@@ -236,7 +236,7 @@ get get_balances_at(time: int): (int, int, int) {
 
 @method_id(123)
 fun get_balances(): (int, int, int) {
-    return get_balances_at(now());
+    return get_balances_at(blockchain.now());
 }
 
 get check_destination(destination: slice): int {

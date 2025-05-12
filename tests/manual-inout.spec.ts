@@ -135,7 +135,7 @@ _ check_message_destination(msg, var allowed_destinations) inline_ref {
 `
   const tolkSource = `
 @inline_ref
-fun checkMessageDestination(msg: auto, allowedDestinations: auto) {
+fun checkMessageDestination(msg: todo, allowedDestinations: todo) {
   var cs = msg.beginParse();
   var flags = cs.loadUint(4);
   if (flags & 8) {
@@ -177,7 +177,7 @@ int main() { }
 `
   const tolkSource = `// do
 
-tolk 0.6
+tolk 0.12
 
 
 fun main(): int { }
@@ -223,7 +223,7 @@ global three: int;
 global four;
 global five;
 global six_s: cell;
-global asdf: auto;
+global asdf: todo;
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -294,7 +294,7 @@ it ('should deal with arguments without types', () => {
 int value(a, b, [_,_] c) impure { return 0; }
 `
   const tolkSource = `
-fun value(a: auto, b: auto, c: [auto,auto]): int { return 0; }
+fun value(a: todo, b: todo, c: [todo,todo]): int { return 0; }
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings.length).toBe(0)    // currently, no warnings emitted
@@ -306,7 +306,7 @@ it ('should deal with arguments without names', () => {
 int value(_, _ _, slice _, int _, asdf, slice) impure { return 0; }
 `
   const tolkSource = `
-fun value(_: auto, _: auto, _: slice, _: int, asdf: auto, _: slice): int { return 0; }
+fun value(_: todo, _: todo, _: slice, _: int, asdf: todo, _: slice): int { return 0; }
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings.length).toBe(0)
@@ -329,7 +329,7 @@ int main() {
 }
 `
   const tolkSource = `// my contract
-tolk 0.6
+tolk 0.12
 
 import "@stdlib/tvm-dicts"
 import "utils.tolk"
@@ -340,8 +340,8 @@ fun main(): int {
   if (1) { do { } while (!(~ obj.FAKE_STD_FN())); }
   display.uDictDeleteFirstAndGet();
   sendRawMessage(msg);
-  var t = getMyOriginalBalanceWithExtraCurrencies();
-  return getMyOriginalBalance() + getMyOriginalBalance();
+  var t = contract.getOriginalBalanceWithExtraCurrencies();
+  return contract.getOriginalBalance() + contract.getOriginalBalance();
 }
 `
   let result = convertFunCToTolk(funCSource)
@@ -428,7 +428,7 @@ fun main() {
   var (i: int) = 0;
   var (i2: int, cs2: slice) = (0, cs);
   var [s3: slice, _: (int)] = null;
-  var (i4: int, c4: auto, b4: auto) = null;
+  var (i4: int, c4: todo, b4: todo) = null;
   var (_, _, i5: int) = (0,0,0);
   var (a: int, (b: int, c: slice)) = f();
 }
@@ -630,7 +630,7 @@ it('should replace throw and similar', () => {
 }
 `
   const tolkSource = `
-fun main(inMsgBody: auto) {
+fun main(inMsgBody: todo) {
   throw 44;
   throw x | y;
   throw   x | y;
@@ -723,34 +723,34 @@ it('should convert ~methods to mutate self and returns in it', () => {
   const tolkSource = `import "@stdlib/tvm-dicts"
 
 // declared via ~
-fun loadOp(mutate self: slice): int { return self.loadUint(32); }
-fun loadQueryId(mutate self: slice): int { return self.loadUint(64); }
-fun loadMulti(mutate self: slice, upto: int): (int, int) { self = sNew; return (1,2); }
-fun loadNothing(mutate self: slice, upto: int): void { log(self); return; }
-fun loadCell(mutate self: slice): cell { self = self.parse(); return beginCell(); }
-fun loadOp(mutate self: slice): int { return self.loadUint(32); }
-fun loadQueryId(mutate self: slice): int { if (1) { self.skip(); } return self.loadUint(64); }
-fun loadMulti(mutate self: slice, upto: int): (int, int) {}
-fun loadNothing(mutate self: slice, upto: int): void {}
+fun slice.loadOp(mutate self): int { return self.loadUint(32); }
+fun slice.loadQueryId(mutate self): int { return self.loadUint(64); }
+fun slice.loadMulti(mutate self, upto: int): (int, int) { self = sNew; return (1,2); }
+fun slice.loadNothing(mutate self, upto: int): void { log(self); return; }
+fun slice.loadCell(mutate self): cell { self = self.parse(); return beginCell(); }
+fun slice.loadOp(mutate self): int { return self.loadUint(32); }
+fun slice.loadQueryId(mutate self): int { if (1) { self.skip(); } return self.loadUint(64); }
+fun slice.loadMulti(mutate self, upto: int): (int, int) {}
+fun slice.loadNothing(mutate self, upto: int): void {}
 // heuristically detected
 @inline
-fun skipBounceFlag(mutate self: slice): void {
+fun slice.skipBounceFlag(mutate self): void {
     self.skipBits(32); // 0xFFFFFFFF
     return;
 }
-fun loadFees(mutate self: slice): (int, int, int) {
+fun slice.loadFees(mutate self): (int, int, int) {
     var fees = (self.loadCoins(), self.loadCoins(), self.loadUint(14));
     return fees;
 }
-fun setNode(mutate self: cell, i: int, v: int): void {
+fun cell.setNode(mutate self, i: int, v: int): void {
   self.uDictSetBuilder(node_dict_key_len, i, beginCell().storeUint(v, 256));
   return;
 }
 @pure
-fun isUdictDeleteGetMin(mutate self: cell, keyLen: int): (int, slice, int)
+fun cell.isUdictDeleteGetMin(mutate self, keyLen: int): (int, slice, int)
     asm(-> 0 2 1 3) "DICTUREMMIN" "NULLSWAPIFNOT2";
 @inline
-fun loadGasPrices(mutate self: slice): int {
+fun slice.loadGasPrices(mutate self): int {
     var gasPrice = self.loadUint(64);
     return gasPrice;
 }
@@ -788,8 +788,8 @@ fun main() {
   cs.storeUint(1, 32);
   dict.iDictSetBuilderIfNotExists(b);
   f.stackMoveToTop();
-  ~debugPrint(-1);
-  f.debugPrint();
+  ~debug.print(-1);
+  f.debug.print();
   var hasPayload = ~ (payload == null);
   { var hasPayload = ~ (payload == null); }
   return (cs, cs.loadInt(cs.loadInt(0)));
@@ -847,7 +847,7 @@ const \`op:call\` = 0;
 const \`%a'&?$!b\` = 0;
 global \`2x\`: int;
 const \`3x()s\` = 0;
-fun \`%'\`() { var \`op::call'\`: int = 0; var (\`locked'\`, a: int) = (); if (\`op::call'\`) { \`%''\`(); } }
+fun \`%'\`() { var \`OP_CALL'\`: int = 0; var (\`locked'\`, a: int) = (); if (\`OP_CALL'\`) { \`%''\`(); } }
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -958,7 +958,7 @@ int main(slice in_msg_body, surround?) {
   const tolkSource = `
 get get_amount_out(amountIn: int, reserveIn: int, reserveOut: int): int { }
 
-fun main(inMsgBody: slice, isSurround: auto): int {
+fun main(inMsgBody: slice, isSurround: todo): int {
   var (isInit: int, index: int) = loadData();
   if (isInit & isSurround) {
     var isFound: int = inMsgBody.loadInt(32) == 1;
@@ -991,5 +991,27 @@ fun onInternalMessage(inMsgBody: slice) {
 `
   let result = convertFunCToTolk(funCSource, { shouldInsertWarningsAsComments: true })
   expect(result.warnings.length).toBe(4)
+  expect(result.tolkSource).toEqual(tolkSource)
+})
+
+it('should convert string postfixes', () => {
+  const funCSource = `
+const a = "s"c;
+const a = "s"H;
+const a = "s"h;
+const a = "s"s;
+const a = "s"u;
+const a = "s"a;
+`
+  const tolkSource = `
+const a = stringCrc32("s");
+const a = stringSha256("s");
+const a = stringSha256_32("s");
+const a = stringHexToSlice("s");
+const a = stringToBase256("s");
+const a = stringAddressToSlice("s");
+`
+  let result = convertFunCToTolk(funCSource)
+  expect(result.warnings).toStrictEqual([])
   expect(result.tolkSource).toEqual(tolkSource)
 })
