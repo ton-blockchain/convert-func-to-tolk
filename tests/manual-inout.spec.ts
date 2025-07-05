@@ -60,9 +60,9 @@ fun storeUintAsDecString(b: builder, x: int): builder
   "ZERO"                                                        // b x i=0
   "SWAP" "TRUE"                                                 // b i=0 x f=-1
 ;
-const /*b*/ a = 1   /*+2*/ +3;
-global a: int /*b*/;
-global /*b*/ c: slice;
+const /*b*/ a = 1   /*+2*/ +3
+global a: int /*b*/
+global /*b*/ c: slice
 fun main(): int {
   var (/*a*/ b: int /*c*/) = 10;
   if (true /*false*/ + 1 /*2*/) { }
@@ -195,12 +195,12 @@ const int three = 3, four = 4 + (0 - 0);
 const five = four + 1, six_s = "my";
 `
   const tolkSource = `
-const one = 1;
-const two_s = "asdf";
-const three = 3;
-const four = 4 + (0 - 0);
-const five = four + 1;
-const six_s = "my";
+const one = 1
+const two_s = "asdf"
+const three = 3
+const four = 4 + (0 - 0)
+const five = four + 1
+const six_s = "my"
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -217,13 +217,13 @@ global five, cell six_s;
 global var asdf;
 `
   const tolkSource = `
-global one: int;             // asdf
-global two_s: slice;
-global three: int;
-global four;
-global five;
-global six_s: cell;
-global asdf: todo;
+global one: int             // asdf
+global two_s: slice
+global three: int
+global four
+global five
+global six_s: cell
+global asdf: todo
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -366,10 +366,10 @@ int main(int should?, slice msg:body) {
 @pure
 fun \`op:rwallet:op\`(): int
     asm "0x82eaf9c4 PUSHINT";
-global \`c:d\`: int;
-const \`off:set\` = 1;
-const \`my:comp\` = \`off:set\` + 2;
-const \`op::fill_up\` = 0x370fec51;
+global \`c:d\`: int
+const \`off:set\` = 1
+const \`my:comp\` = \`off:set\` + 2
+const \`op::fill_up\` = 0x370fec51
 fun main(isShould: int, \`msg:body\`: slice): int {
   \`op:rwallet:op\`();
   var c = 1 + ~\`op:rwallet:op\`() + \`c:d\` + \`my:comp\`;
@@ -588,9 +588,9 @@ int main() {
 }
 `
   const tolkSource = `
-const asdf = divMod(1, 2);
-const asdf = x + divMod(1, 2);
-const asdf = divMod(1, (divMod(2, 3)));
+const asdf = divMod(1, 2)
+const asdf = x + divMod(1, 2)
+const asdf = divMod(1, (divMod(2, 3)))
 fun main(): int {
   return 2 ~/ 3;
   return ((divMod(2, 3)) == null);
@@ -844,10 +844,10 @@ const \`3x()s\` = 0;
 _ %'() { int op::call' = 0; var (locked', int a) = (); if op::call' { %''(); } }
 `
   const tolkSource = `
-const \`op:call\` = 0;
-const \`%a'&?$!b\` = 0;
-global \`2x\`: int;
-const \`3x()s\` = 0;
+const \`op:call\` = 0
+const \`%a'&?$!b\` = 0
+global \`2x\`: int
+const \`3x()s\` = 0
 fun \`%'\`() { var \`OP_CALL'\`: int = 0; var (\`locked'\`, a: int) = (); if (\`OP_CALL'\`) { \`%''\`(); } }
 `
   let result = convertFunCToTolk(funCSource)
@@ -930,9 +930,9 @@ const SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE = 64;
 const SEND_MODE_CARRY_ALL_BALANCE = 128;
 `
   const tolkSource = `
-const WORKCHAIN = 0;
+const WORKCHAIN = 0
 
-const SEND_MODE_DESTROY = 32374283467;
+const SEND_MODE_DESTROY = 32374283467
 
 `
   let result = convertFunCToTolk(funCSource)
@@ -1006,12 +1006,12 @@ const a = "s"u;
 const a = "s"a;
 `
   const tolkSource = `
-const a = stringCrc32("s");
-const a = stringSha256("s");
-const a = stringSha256_32("s");
-const a = stringHexToSlice("s");
-const a = stringToBase256("s");
-const a = address("s");
+const a = stringCrc32("s")
+const a = stringSha256("s")
+const a = stringSha256_32("s")
+const a = stringHexToSlice("s")
+const a = stringToBase256("s")
+const a = address("s")
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])

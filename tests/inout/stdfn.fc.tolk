@@ -1,5 +1,5 @@
-const OP_BURN = 123;
-const ERR_INVALID = 0x456;
+const OP_BURN = 123
+const ERR_INVALID = 0x456
 
 fun main(c: cell) {
     contract.getData();

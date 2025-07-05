@@ -4,8 +4,6 @@ tolk 1.0
 
 import "@stdlib/gas-payments"
 import "@stdlib/tvm-dicts"
-
-
 import "op-codes"
 import "workchain"
 import "jetton-utils"

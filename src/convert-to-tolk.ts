@@ -238,7 +238,12 @@ class FunCToTolkState {
       out += `import "${filename}"\n`
     }
 
-    out += this.tolkSource.substring(posFirstDirective)
+    let next = this.tolkSource.substring(posFirstDirective)
+    if (/^\n+import/g.test(next)) {
+      next = next.trimStart()
+    }
+
+    out += next
     out = out.replace(/var (\w+) redef =/g, '$1 =')
     return out
   }
@@ -360,7 +365,9 @@ function convertConstantDeclarations(n: SyntaxNode, out: FunCToTolkState) {
     } else if (child.type === 'comment') {
       convertComment(child, out)
     } else if (child.type === ',') {
-      out.addTextModified(child, ";\nconst")
+      out.addTextModified(child, "\nconst")
+    } else if (child.type === ';') {
+      out.addTextModified(child, '')
     } else {
       out.addTextUnchanged(child)
     }
@@ -388,7 +395,9 @@ function convertGlobalsDeclarations(n: SyntaxNode, out: FunCToTolkState) {
     } else if (child.type === 'comment') {
       convertComment(child, out)
     } else if (child.type === ',') {
-      out.addTextModified(child, ";\nglobal")
+      out.addTextModified(child, "\nglobal")
+    } else if (child.type === ';') {
+      out.addTextModified(child, '')
     } else {
       out.addTextUnchanged(child)
     }
