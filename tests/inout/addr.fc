@@ -1,0 +1,26 @@
+() save_data(int total_supply, slice admin_address, cell content, cell jetton_wallet_code) impure inline {
+    set_data(begin_cell()
+        .store_coins(total_supply)
+        .store_slice(admin_address)
+        .store_ref(content)
+        .store_ref(jetton_wallet_code)
+        .end_cell()
+    );
+}
+
+() recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore empty messages
+        return ();
+    }
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+    slice sender_address = cs~load_msg_addr();
+
+    slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+
+    (int total_supply, slice admin_address, cell content, cell jetton_wallet_code) = load_data();
+}

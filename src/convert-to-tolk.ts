@@ -232,7 +232,7 @@ class FunCToTolkState {
     out += this.tolkSource.substring(0, posFirstDirective)
 
     if (this.needInsertTolkPreamble) {
-      out += 'tolk 0.12\n\n'
+      out += 'tolk 1.0\n\n'
     }
     for (let filename of this.importStdlib) {
       out += `import "${filename}"\n`
@@ -277,6 +277,11 @@ function debugPrintNode(n: SyntaxNode) {
   console.log(state.str)
 }
 
+function doesVariableSeemLikeAddress(variableName: string) {
+  return variableName.includes('addr') || variableName.includes('Addr')
+      || variableName.startsWith('sender')
+}
+
 function convertComment(n: SyntaxNode, out: FunCToTolkState) {
   const text = n.text
   if (text[0] === '{' && text[1] === '-') {
@@ -302,7 +307,7 @@ function convertIncludeToImport(n: SyntaxNode, out: FunCToTolkState) {
     out.skipSpaces()
     return
   }
-  text = text.replace(/\.(fc|func)"$/, '.tolk"')
+  text = text.replace(/\.(fc|func)"$/, '"')
   out.addTextModified(n, `import ${text}`)
 }
 
@@ -390,7 +395,7 @@ function convertGlobalsDeclarations(n: SyntaxNode, out: FunCToTolkState) {
   }
 }
 
-function convertType(typeNodes: SyntaxNode[], out: FunCToTolkState) {
+function convertType(typeNodes: SyntaxNode[], out: FunCToTolkState, replaceSliceWithAddress = false) {
   for (let i = 0; i < typeNodes.length; ++i) {
     let n = typeNodes[i]
     if (n.type === 'comment') {
@@ -404,6 +409,8 @@ function convertType(typeNodes: SyntaxNode[], out: FunCToTolkState) {
       let txt = n.text
       if (txt === 'cont')
         out.addTextModified(n, 'continuation')
+      else if (txt === 'slice' && replaceSliceWithAddress)
+        out.addTextModified(n, 'address')
       else
         out.addTextUnchanged(n)
     } else if (n.type === 'hole_type' || n.type === 'var_type') {
@@ -472,7 +479,7 @@ function convertFunctionParameter(n: SyntaxNode, out: FunCToTolkState, forceName
   if (n_type.length && s_name) {
     let s_type = out.createEmptyFork(n)
     s_type.addTextCustom(s_name + ": ")
-    convertType(n_type, s_type)
+    convertType(n_type, s_type, doesVariableSeemLikeAddress(s_name))
     if (forceName !== 'self') {
       out.mergeWithFork(s_type)
     } else {
@@ -515,6 +522,7 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
   let f_name = n_name!.text
   let arr_annotations = []
   let is_get_method = !!is_method_id_n
+  let s_preceding_comment = null
   let s_fun_keyword = out.createEmptyFork(n.firstChild!)
   let s_name = out.createEmptyFork(n_name!)
   let s_receiver_name = null
@@ -558,7 +566,7 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
     } else if ((orig_s_return_type === '_' || orig_s_return_type === '()') && !is_builtin) {
       // skip
     } else {
-      convertType(n_return_type, s_return_type!)
+      convertType(n_return_type, s_return_type!, doesVariableSeemLikeAddress(f_name))
     }
   }
   if (n_name) {
@@ -568,6 +576,10 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
       newName = /^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(oldName) ? oldName : '`' + oldName + '`'
     } else if (newName in RENAMING.ENTRYPOINT_RENAMING) {
       newName = RENAMING.ENTRYPOINT_RENAMING[newName]
+      if (newName === 'onInternalMessage') {
+        s_preceding_comment = out.createEmptyFork(n.firstChild!)
+        s_preceding_comment.addTextCustom('// in the future, use: fun onInternalMessage(in: InMessage) {\n')
+      }
     } else if (out.getOptions().transformFunctionNamesToCamelCase) {
       newName = transformSnakeCaseToCamelCase(newName)
     }
@@ -615,11 +627,11 @@ function convertFunctionDefinition(n: SyntaxNode, out: FunCToTolkState) {
   // add text delimiters
   if (arr_annotations.length)
     s_fun_keyword.addTextCustom(arr_annotations.join("\n") + "\n")
-  s_fun_keyword.addTextCustom(is_get_method ? "get " : "fun ")
+  s_fun_keyword.addTextCustom(is_get_method ? "get fun " : "fun ")
   if (s_return_type && !s_return_type.isEmpty())
     s_parameters!.addTextCustom(': ')
 
-  out.mergeWithFork(s_fun_keyword, s_receiver_name, s_name, s_genericsT, s_parameters, s_return_type, s_specifiers)
+  out.mergeWithFork(s_preceding_comment, s_fun_keyword, s_receiver_name, s_name, s_genericsT, s_parameters, s_return_type, s_specifiers)
 
   if (is_modifying_method) {
     out.onEnterModifyingMethod(first_param_name)
@@ -650,6 +662,9 @@ function convertVariableDeclarationExpression(n: SyntaxNode, s_type: string, var
       let varName = replaceIdentifier(n.text, out, false)
       if (out.getOptions().transformLocalVarNamesToCamelCase) {
         varName = transformSnakeCaseToCamelCase(varName)
+      }
+      if (s_type === 'slice' && doesVariableSeemLikeAddress(varName)) {
+        s_type = 'address'
       }
       if (s_type === '(expression)' || varsDeclaredEarlier.includes(varName)) {
         out.addTextModified(n, varName + " redef")
@@ -1110,6 +1125,7 @@ function convertFunctionCall(n: SyntaxNode, out: FunCToTolkState) {
 function convertMethodCall(n: SyntaxNode, out: FunCToTolkState) {
   let n_ident = n.childForFieldName('method_name')
   let n_arguments = n.childForFieldName('arguments')
+  let force_name = ''
   if (n_ident?.type === 'identifier') {
     let f_name = n_ident.text
     if (f_name === 'null?' || f_name === 'cell_null?' || f_name === 'builder_null?') {
@@ -1122,10 +1138,17 @@ function convertMethodCall(n: SyntaxNode, out: FunCToTolkState) {
       out.justSkipNode(n)
       return
     }
+    if (f_name === 'store_slice' && n_arguments && doesVariableSeemLikeAddress(n_arguments.text)) {
+      force_name = 'storeAddress'
+    }
   }
 
   for (let child of n.children) {
-    convertAnyInFunctionBody(child, out)
+    if (child.id === n_ident?.id && force_name) {
+      out.addTextModified(child, force_name)
+    } else {
+      convertAnyInFunctionBody(child, out)
+    }
   }
 }
 

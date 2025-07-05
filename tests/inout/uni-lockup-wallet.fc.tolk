@@ -119,6 +119,7 @@ fun unlockGrams(locked: cell, total: int, nowTs: int): (cell, int) {
     return (locked, total);
 }
 
+// in the future, use: fun onInternalMessage(in: InMessage) {
 fun onInternalMessage(msgValue: int, inMsgCell: cell, inMsg: slice) {
     var cs = inMsgCell.beginParse();
     var flags = cs.loadUint(4);  // int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
@@ -127,7 +128,7 @@ fun onInternalMessage(msgValue: int, inMsgCell: cell, inMsg: slice) {
         return;
     }
     var sAddr = cs.loadAddress();
-    if (inMsg.isEnd()) {
+    if (inMsg.isEmpty()) {
         return;
     }
     var op: int = inMsg.loadUint32();
@@ -204,17 +205,17 @@ fun onExternalMessage(inMsg: slice) {
 
 // Get methods
 
-get seqno(): int {
+get fun seqno(): int {
     return contract.getData().beginParse().preloadUint(32);
 }
 
-get wallet_id(): int {
+get fun wallet_id(): int {
     var ds = contract.getData().beginParse();
     ds.loadUint32();
     return ds.preloadUint(32);
 }
 
-get get_public_key(): int {
+get fun get_public_key(): int {
     var ds = contract.getData().beginParse();
     ds.loadUint(32 + 32);
     return ds.preloadUint(256);
@@ -222,7 +223,7 @@ get get_public_key(): int {
 
 // the next three methods are mostly for testing
 
-get get_balances_at(time: int): (int, int, int) {
+get fun get_balances_at(time: int): (int, int, int) {
     var (storedSeqno, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
         totalRestrictedValue, restricted) = unpackData();
     (restricted, totalRestrictedValue) = unlockGrams(restricted, totalRestrictedValue, time);
@@ -239,7 +240,7 @@ fun get_balances(): (int, int, int) {
     return get_balances_at(blockchain.now());
 }
 
-get check_destination(destination: slice): int {
+get fun check_destination(destination: slice): int {
     var (storedSeqno, storedSubwallet, publicKey, configPublicKey, allowedDestinations, totalLockedValue, locked,
         totalRestrictedValue, restricted) = unpackData();
     return isWhitelisted(destination, allowedDestinations);

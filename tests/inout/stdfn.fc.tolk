@@ -18,7 +18,7 @@ fun main(c: cell) {
         var c = beginCell().endCell();
         c.hash();
         c.hash();
-        c.beginParse().isEnd();
+        c.beginParse().isEmpty();
         s.remainingRefsCount();
     }
     assert(sender_address.bitsEqual(owner_address)) throw 401;

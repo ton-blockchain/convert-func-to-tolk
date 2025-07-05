@@ -157,8 +157,8 @@ it('should convert #include to import', () => {
   const tolkSource = `
 import "adsf" // hello
 import "may/be/../about"
-import "some1.tolk"
-import "some/2.tolk"
+import "some1"
+import "some/2"
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -177,7 +177,7 @@ int main() { }
 `
   const tolkSource = `// do
 
-tolk 0.12
+tolk 1.0
 
 
 fun main(): int { }
@@ -278,9 +278,9 @@ int processed?() method_id { }
 int some:other() method_id(123) { }
 `
   const tolkSource = `
-get value(): int { return 0; }
-get some_thing(): slice { }
-get \`processed?\`(): int { }
+get fun value(): int { return 0; }
+get fun some_thing(): slice { }
+get fun \`processed?\`(): int { }
 @method_id(123)
 fun \`some:other\`(): int { }
 `
@@ -329,10 +329,10 @@ int main() {
 }
 `
   const tolkSource = `// my contract
-tolk 0.12
+tolk 1.0
 
 import "@stdlib/tvm-dicts"
-import "utils.tolk"
+import "utils"
 
 fun main(): int {
   FAKE_STD_FN();
@@ -823,6 +823,7 @@ _ split_install(slice in_msg) { }
 `
   const tolkSource = `
 fun main() { }
+// in the future, use: fun onInternalMessage(in: InMessage) {
 fun onInternalMessage(cs: slice) { }
 fun onExternalMessage(inMsg: slice) { }
 fun onRunTickTock(inMsg: slice) { }
@@ -956,7 +957,7 @@ int main(slice in_msg_body, surround?) {
 }
 `
   const tolkSource = `
-get get_amount_out(amountIn: int, reserveIn: int, reserveOut: int): int { }
+get fun get_amount_out(amountIn: int, reserveIn: int, reserveOut: int): int { }
 
 fun main(inMsgBody: slice, isSurround: todo): int {
   var (isInit: int, index: int) = loadData();
@@ -983,6 +984,7 @@ _ recv_internal(slice in_msg_body) {
 }
 `
   const tolkSource = `
+// in the future, use: fun onInternalMessage(in: InMessage) {
 fun onInternalMessage(inMsgBody: slice) {
   var (new, value) = inMsgBody/* _WARNING_ method .loadInt() now mutates the object and returns just int */.loadInt(32);
   cs/* _WARNING_ method .skipBits() now mutates the object and returns self */.skipBits()/* _WARNING_ method .loadUint() now mutates the object and returns just int */.loadUint(32);
@@ -1009,7 +1011,35 @@ const a = stringSha256("s");
 const a = stringSha256_32("s");
 const a = stringHexToSlice("s");
 const a = stringToBase256("s");
-const a = stringAddressToSlice("s");
+const a = address("s");
+`
+  let result = convertFunCToTolk(funCSource)
+  expect(result.warnings).toStrictEqual([])
+  expect(result.tolkSource).toEqual(tolkSource)
+})
+
+it('should replace slice with address', () => {
+  const funCSource = `
+() save_data(slice sender) {
+    slice cs = in_msg_full.begin_parse();
+    slice sender_address = cs~load_msg_addr();
+    set_data(begin_cell()
+        .store_slice(admin_address).store_slice(cs)
+    );
+    if (~ is_address_none(get_ccc())) {}
+    (int wc, _) = parse_std_addr(addr);
+}
+`
+  const tolkSource = `
+fun saveData(sender: address) {
+    var cs: slice = in_msg_full.beginParse();
+    var senderAddress: address = cs.loadAddress();
+    contract.setData(beginCell()
+        .storeAddress(admin_address).storeSlice(cs)
+    );
+    if (~ getCcc().isNone()) {}
+    var (wc: int, _) = addr.getWorkchainAndHash();
+}
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
