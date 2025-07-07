@@ -1,5 +1,5 @@
-const OP_BURN = 123;
-const ERR_INVALID = 0x456;
+const OP_BURN = 123
+const ERR_INVALID = 0x456
 
 fun main(c: cell) {
     contract.getData();
@@ -18,7 +18,7 @@ fun main(c: cell) {
         var c = beginCell().endCell();
         c.hash();
         c.hash();
-        c.beginParse().isEnd();
+        c.beginParse().isEmpty();
         s.remainingRefsCount();
     }
     assert(sender_address.bitsEqual(owner_address)) throw 401;

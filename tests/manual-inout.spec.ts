@@ -60,9 +60,9 @@ fun storeUintAsDecString(b: builder, x: int): builder
   "ZERO"                                                        // b x i=0
   "SWAP" "TRUE"                                                 // b i=0 x f=-1
 ;
-const /*b*/ a = 1   /*+2*/ +3;
-global a: int /*b*/;
-global /*b*/ c: slice;
+const /*b*/ a = 1   /*+2*/ +3
+global a: int /*b*/
+global /*b*/ c: slice
 fun main(): int {
   var (/*a*/ b: int /*c*/) = 10;
   if (true /*false*/ + 1 /*2*/) { }
@@ -157,8 +157,8 @@ it('should convert #include to import', () => {
   const tolkSource = `
 import "adsf" // hello
 import "may/be/../about"
-import "some1.tolk"
-import "some/2.tolk"
+import "some1"
+import "some/2"
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -177,7 +177,7 @@ int main() { }
 `
   const tolkSource = `// do
 
-tolk 0.12
+tolk 1.0
 
 
 fun main(): int { }
@@ -195,12 +195,12 @@ const int three = 3, four = 4 + (0 - 0);
 const five = four + 1, six_s = "my";
 `
   const tolkSource = `
-const one = 1;
-const two_s = "asdf";
-const three = 3;
-const four = 4 + (0 - 0);
-const five = four + 1;
-const six_s = "my";
+const one = 1
+const two_s = "asdf"
+const three = 3
+const four = 4 + (0 - 0)
+const five = four + 1
+const six_s = "my"
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -217,13 +217,13 @@ global five, cell six_s;
 global var asdf;
 `
   const tolkSource = `
-global one: int;             // asdf
-global two_s: slice;
-global three: int;
-global four;
-global five;
-global six_s: cell;
-global asdf: todo;
+global one: int             // asdf
+global two_s: slice
+global three: int
+global four
+global five
+global six_s: cell
+global asdf: todo
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
@@ -278,9 +278,9 @@ int processed?() method_id { }
 int some:other() method_id(123) { }
 `
   const tolkSource = `
-get value(): int { return 0; }
-get some_thing(): slice { }
-get \`processed?\`(): int { }
+get fun value(): int { return 0; }
+get fun some_thing(): slice { }
+get fun \`processed?\`(): int { }
 @method_id(123)
 fun \`some:other\`(): int { }
 `
@@ -329,10 +329,10 @@ int main() {
 }
 `
   const tolkSource = `// my contract
-tolk 0.12
+tolk 1.0
 
 import "@stdlib/tvm-dicts"
-import "utils.tolk"
+import "utils"
 
 fun main(): int {
   FAKE_STD_FN();
@@ -366,10 +366,10 @@ int main(int should?, slice msg:body) {
 @pure
 fun \`op:rwallet:op\`(): int
     asm "0x82eaf9c4 PUSHINT";
-global \`c:d\`: int;
-const \`off:set\` = 1;
-const \`my:comp\` = \`off:set\` + 2;
-const \`op::fill_up\` = 0x370fec51;
+global \`c:d\`: int
+const \`off:set\` = 1
+const \`my:comp\` = \`off:set\` + 2
+const \`op::fill_up\` = 0x370fec51
 fun main(isShould: int, \`msg:body\`: slice): int {
   \`op:rwallet:op\`();
   var c = 1 + ~\`op:rwallet:op\`() + \`c:d\` + \`my:comp\`;
@@ -588,9 +588,9 @@ int main() {
 }
 `
   const tolkSource = `
-const asdf = divMod(1, 2);
-const asdf = x + divMod(1, 2);
-const asdf = divMod(1, (divMod(2, 3)));
+const asdf = divMod(1, 2)
+const asdf = x + divMod(1, 2)
+const asdf = divMod(1, (divMod(2, 3)))
 fun main(): int {
   return 2 ~/ 3;
   return ((divMod(2, 3)) == null);
@@ -823,6 +823,7 @@ _ split_install(slice in_msg) { }
 `
   const tolkSource = `
 fun main() { }
+// in the future, use: fun onInternalMessage(in: InMessage) {
 fun onInternalMessage(cs: slice) { }
 fun onExternalMessage(inMsg: slice) { }
 fun onRunTickTock(inMsg: slice) { }
@@ -843,10 +844,10 @@ const \`3x()s\` = 0;
 _ %'() { int op::call' = 0; var (locked', int a) = (); if op::call' { %''(); } }
 `
   const tolkSource = `
-const \`op:call\` = 0;
-const \`%a'&?$!b\` = 0;
-global \`2x\`: int;
-const \`3x()s\` = 0;
+const \`op:call\` = 0
+const \`%a'&?$!b\` = 0
+global \`2x\`: int
+const \`3x()s\` = 0
 fun \`%'\`() { var \`OP_CALL'\`: int = 0; var (\`locked'\`, a: int) = (); if (\`OP_CALL'\`) { \`%''\`(); } }
 `
   let result = convertFunCToTolk(funCSource)
@@ -929,9 +930,9 @@ const SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE = 64;
 const SEND_MODE_CARRY_ALL_BALANCE = 128;
 `
   const tolkSource = `
-const WORKCHAIN = 0;
+const WORKCHAIN = 0
 
-const SEND_MODE_DESTROY = 32374283467;
+const SEND_MODE_DESTROY = 32374283467
 
 `
   let result = convertFunCToTolk(funCSource)
@@ -956,7 +957,7 @@ int main(slice in_msg_body, surround?) {
 }
 `
   const tolkSource = `
-get get_amount_out(amountIn: int, reserveIn: int, reserveOut: int): int { }
+get fun get_amount_out(amountIn: int, reserveIn: int, reserveOut: int): int { }
 
 fun main(inMsgBody: slice, isSurround: todo): int {
   var (isInit: int, index: int) = loadData();
@@ -983,6 +984,7 @@ _ recv_internal(slice in_msg_body) {
 }
 `
   const tolkSource = `
+// in the future, use: fun onInternalMessage(in: InMessage) {
 fun onInternalMessage(inMsgBody: slice) {
   var (new, value) = inMsgBody/* _WARNING_ method .loadInt() now mutates the object and returns just int */.loadInt(32);
   cs/* _WARNING_ method .skipBits() now mutates the object and returns self */.skipBits()/* _WARNING_ method .loadUint() now mutates the object and returns just int */.loadUint(32);
@@ -1004,12 +1006,40 @@ const a = "s"u;
 const a = "s"a;
 `
   const tolkSource = `
-const a = stringCrc32("s");
-const a = stringSha256("s");
-const a = stringSha256_32("s");
-const a = stringHexToSlice("s");
-const a = stringToBase256("s");
-const a = stringAddressToSlice("s");
+const a = stringCrc32("s")
+const a = stringSha256("s")
+const a = stringSha256_32("s")
+const a = stringHexToSlice("s")
+const a = stringToBase256("s")
+const a = address("s")
+`
+  let result = convertFunCToTolk(funCSource)
+  expect(result.warnings).toStrictEqual([])
+  expect(result.tolkSource).toEqual(tolkSource)
+})
+
+it('should replace slice with address', () => {
+  const funCSource = `
+() save_data(slice sender) {
+    slice cs = in_msg_full.begin_parse();
+    slice sender_address = cs~load_msg_addr();
+    set_data(begin_cell()
+        .store_slice(admin_address).store_slice(cs)
+    );
+    if (~ is_address_none(get_ccc())) {}
+    (int wc, _) = parse_std_addr(addr);
+}
+`
+  const tolkSource = `
+fun saveData(sender: address) {
+    var cs: slice = in_msg_full.beginParse();
+    var senderAddress: address = cs.loadAddress();
+    contract.setData(beginCell()
+        .storeAddress(admin_address).storeSlice(cs)
+    );
+    if (~ getCcc().isNone()) {}
+    var (wc: int, _) = addr.getWorkchainAndHash();
+}
 `
   let result = convertFunCToTolk(funCSource)
   expect(result.warnings).toStrictEqual([])
