@@ -1,18 +1,28 @@
 # Convert FunC contracts to Tolk with a single command
 
-**Tolk** is a new language for writing smart contracts in TON. Think of Tolk as the "next‑generation FunC".
-Tolk compiler is literally a fork of FunC compiler, introducing familiar syntax similar to TypeScript,
-but leaving all low-level optimizations untouched.
+**Tolk** is a next-generation language for smart contracts in TON.
+It replaces FunC with modern syntax, strong types, and built-in serialization — while generating even more efficient assembler code.
 
-Using just one-line command, you can take your existing FunC file and immediately transform it to Tolk:
+Using single command, you can transform an exising FunC project to Tolk:
 ```shell
+// all .fc files in a folder
+npx @ton/convert-func-to-tolk contracts
+
+// or a single file
 npx @ton/convert-func-to-tolk jetton-minter.fc
 ```
 
 Example input: [jetton-minter.fc](tests/inout/jetton-minter.fc)  
 Example output: [jetton-minter.tolk](tests/inout/jetton-minter.fc.tolk)
 
-Of course, the result will require some manual fixes, but definitely, almost all boilerplate is done automatically.
+
+## Converter: a starting point for migrating from FunC
+
+This is a syntax-level converter that helps migrate FunC contracts to Tolk. It rewrites your code with 1:1 semantics — so you get a Tolk version of your contract that "looks and smells" like FunC.
+
+The converted contract won't use modern Tolk features like `struct`, auto-serialization, or clean message composition. But after some manual fixes, it compiles, runs, and passes tests.
+
+From there, you can gradually modernize the code — step by step, while keeping it functional at every stage.
 
 
 ## Installation
@@ -20,7 +30,7 @@ Of course, the result will require some manual fixes, but definitely, almost all
 Not required: just use `npx` above.
 
 
-## Command-line options
+#### Command-line options
 
 `npx` above uses default options, but here is what you can pass:
 * `--warnings-as-comments` — insert `/* _WARNING_ */` comments (not just print warnings to output)
@@ -51,12 +61,13 @@ Not required: just use `npx` above.
 * Replaces `~method()` with `.method()`
 * Replaces entrypoints: `recv_internal` → `onInternalMessage` and similar
 * Replaces string postfixes: `"str"c` → `stringCrc32("str")` and others
+* Tries to guess when you need `address` instead of `slice`
 * Converts functions and locals from snake_case to camelCase (globals/constants no, since a converter works per-file, whereas they are often imported)
 * ... and lots of other stuff, actually
 
-Of course, the convertion result seems quite dirty. For instance, Tolk has logical operators, and therefore `if (~ found)` could probably be `if (!found)`. For instance, `flags & 1` could probably be `isMessageBounced(flags)`. For instance, `assert(!(a < 0))` is actually `assert(a >= 0)`. And so on.
+Of course, the convertion result seems quite dirty. For instance, Tolk has logical operators, and therefore `if (~ found)` could probably be `if (!found)`. For instance, `assert(!(a < 0))` is actually `assert(a >= 0)`. And so on.
 
-Contracts written in Tolk from scratch would definitely look nicer. But that's what exactly expected from auto-conversion.
+Contracts written in modern Tolk from scratch look much nicer. But that's what exactly expected from auto-conversion.
 
 Helpful link: [Tolk vs FunC: in short](https://docs.ton.org/v3/documentation/smart-contracts/tolk/tolk-vs-func/in-short).
 
@@ -139,12 +150,40 @@ fun builder.storeMsgFlagsAndAddressNone(mutate self, msgFlags: int): self {
 
 ### Problems besides methods and mutability
 
-Some stdlib functions were removed. For instance, `pair(a,b)` removed, as it can be replaced with `[a,b]`. As well as various functions working with tuples, which are supposed to be expressed syntactically.
+* Some stdlib functions were removed. For instance, `pair(a,b)` removed, as it can be replaced with `[a,b]`. As well as various functions working with tuples, which are supposed to be expressed syntactically.
 
-Tolk is null-safe, so you can't assign `null` to `cell`, only to `cell?`. And since some stdlib functions return nullable values, types will most likely mismatch.
+* Tolk is null-safe, so you can't assign `null` to `cell`, only to `cell?`. And since some stdlib functions return nullable values, types will most likely mismatch.
 
-Tolk has `bool` type. Comparison operators `== != < >` return bool. Logical operators `&& ||` return bool. Constants `true` and `false` have the bool type. Lots of stdlib functions now return bool, not int (having -1 and 0 at runtime). In FunC, you have to write `if (~ equal)`. In Tolk, bitwise `~` for bool is an error, write just `if (!equal)`. You can't assign `bool` to `int` directly, only via `boolVar as int` (but most likely, it's a bad idea). Remember, that `true` is -1, not 1.
+* Tolk has `bool` type (FunC had only `int`). Comparison operators `== != < >` return bool. Logical operators `&& ||` return bool. In FunC, you have to write `if (~ equal)`. In Tolk, bitwise `~` for bool is an error, write just `if (!equal)`. You can't assign `bool` to `int` directly, only via `boolVar as int` (but most likely, it's a bad idea). Remember, that `true` is -1, not 1.
+
+* Tolk has `address` type (FunC had only `slice`). You can't assign `slice` to `address` and vice versa without `as` operator. The converter tries to guess whether `address` should be used instead. For instance `slice sender_address = ...` will be converted to `var senderAddress: address = ...`. 
 
 Deep dive: [Tolk vs FunC: in detail](https://docs.ton.org/v3/documentation/smart-contracts/tolk/tolk-vs-func/in-detail).
 
-Remember that contracts written in Tolk from scratch would definitely look nicer than after auto-convertion.
+
+## What should I do after successful convertion?
+
+This converter gives you a working starting point — a Tolk contract that's still written in a "FunC style," but ready to be modernized step by step.
+
+1. Once you fix compilation errors, you'll have a functional contract with the same logic as before — just in Tolk syntax. It won't use structs, auto-serialization, and other features yet.
+2. From there, begin gradually refactoring the code:
+   - Replace `onInternalMessage(inMsgFull: cell, inMsgBody: slice)` with `onInternalMessage(in: InMessage)` and use its fields directly
+   - To handle bounces, use `onBouncedMessage(in: InMessageBounced)` — it's called automatically
+   - Extract a `Storage` struct, with toCell/fromCell like in examples, use it everywhere instead of manual functions
+   - Refactor incoming messages into structs with 32-bit opcodes — incrementally, one message at a time
+   - Define a union of possible messages, use `val msg = lazy MyUnion.fromSlice(in.body)` and `match (msg)`
+   - Extract outgoing messages into structs, and send them with `createMessage(...)`
+
+The key idea: **your tests keep running at every stage**. That's what makes this approach safe — you can confidently refactor and modernize the codebase without breaking anything.
+
+Deep dive: [Auto-packing to/from cells](https://docs.ton.org/v3/documentation/smart-contracts/tolk/tolk-vs-func/pack-to-from-cells).
+
+Deep dive: [Universal createMessage](https://docs.ton.org/v3/documentation/smart-contracts/tolk/tolk-vs-func/create-message).
+
+
+## Where can I find some "reference" contracts in Tolk?
+
+Here: [Tolk vs FunC benchmarks](https://github.com/ton-blockchain/tolk-bench). This repository contains several contracts migrated from FunC — preserving original logic and passing the same tests.
+
+If you are familiar with how jettons or NFTs are implemented in FunC, you'll feel right at home. The Tolk versions are significantly clearer and more readable. 
+You can also explore the Git history to see how each contract was gradually rewritten, step by step.
